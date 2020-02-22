@@ -1,5 +1,69 @@
 import ResourceTransport from "./ResourceTransport";
 
+const createAction = (config) => {
+  const defaultRequestHandler = (request) => ({ items: request });
+  const requestHandler = config.requestHandler || defaultRequestHandler;
+  const creator = (request) => ({ type: config.actionType, payload: requestHandler(request) });
+  const handler = (state) => (state);
+
+  return {
+    creator,
+    handler: config.handler || handler
+  }
+}
+
+const defaultActionsConfig = {
+  get: {
+    actionType: 'get',
+    requestHandler: (state, { payload: { item } }) => {
+      return {
+        ...state,
+        items: { ...state.items, [item.id]: item }
+      }
+    }
+  },
+  create: {
+    actionType: 'create',
+    requestHandler: (state, { payload: { item }}) => {
+      return {
+        ...state,
+        items: { ...state.items, [item.id]: item }
+      }
+    }
+  },
+  update: {
+    actionType: 'update',
+    requestHandler: (state, { payload: { item }}) => {
+      return {
+        ...state,
+        items: { ...state.items, [item.id]: item }
+      }
+    }
+  },
+  remove: {
+    actionType: 'remove',
+    requestHandler: (state, { payload: { item }}) => {
+      const items = { ...state.items };
+      delete items[item.id];
+
+      return { ...state, items }
+    }
+  },
+  list: {
+    actionType: 'list',
+    requestHandler: (state, { payload: { items } }) => ({
+      ...state,
+      items: items.reduce((reducer, item) => ({ ...reducer, [item.id]: item }), {})
+    }),
+    handler: (state, { payload }) => {
+      return {
+        ...state,
+        ...payload
+      }
+    }
+  },
+};
+
 class Resource {
   constructor(config) {
     if (!config.name) {
@@ -15,54 +79,18 @@ class Resource {
     this.name = config.name;
     this.singlePath = config.singlePath || config.name;
     this.pluralPath = config.pluralPath || this.singlePath + 's';
-    this.actions = {
-      [`${this.name}_get`]: {
-        creator: (item) => ({ type: `${this.name}_get`, payload: { item } }),
-        handler: (state, { payload: { item } }) => {
-          return {
-            ...state,
-            items: { ...state.items, [item.id]: item }
-          }
-        }
-      },
-      [`${this.name}_create`]: {
-        creator: (item) => ({ type: `${this.name}_create`, payload: { item } }),
-        handler: (state, { payload: { item }}) => {
-          return {
-            ...state,
-            items: { ...state.items, [item.id]: item }
-          }
-        }
-      },
-      [`${this.name}_update`]: {
-        creator: (item) => ({ type: `${this.name}_update`, payload: { item } }),
-        handler: (state, { payload: { item }}) => {
-          return {
-            ...state,
-            items: { ...state.items, [item.id]: item }
-          }
-        }
-      },
-      [`${this.name}_remove`]: {
-        creator: (item) => ({ type: `${this.name}_remove`, payload: { item } }),
-        handler: (state, { payload: { item }}) => {
-          const items = { ...state.items };
-          delete items[item.id];
+    const actions = {
+      ...defaultActionsConfig,
+      ...(config.actions || {})
+    }
 
-          return { ...state, items }
-        }
+    this.actions = Object.keys(actions).reduce(
+      (reducer, actionKey) => {
+        reducer[actionKey] = createAction(actions[actionKey]);
+        return reducer;
       },
-      [`${this.name}_list`]: {
-        creator: (items) => ({ type: `${this.name}_list`, payload: { items } }),
-        handler: (state, { payload: { items } }) => {
-          return {
-            ...state,
-            items: items.reduce((reducer, item) => ({ ...reducer, [item.id]: item }), {})
-          };
-        }
-      },
-      // bulkCreate: (items) => ({ type: `${this.name}_bulk_create`, payload: { items } }),
-    };
+      {}
+    );
   }
 
   makeQueryParams(params) {
@@ -79,18 +107,22 @@ class Resource {
     const paramsString = this.makeQueryParams(params);
 
     if (paramsString) {
-      return url + '&' + paramsString;
+      return url + '?' + paramsString;
     }
 
     return url;
   }
 
+  selectState(store) {
+    return store[`api_${this.name}`];
+  }
+
   selectItems(store) {
-    return store[`${this.name}`].items;
+    return store[`api_${this.name}`].items;
   }
 
   selectItem(store, itemId) {
-    return store[`${this.name}`].items[itemId];
+    return store[`api_${this.name}`].items[itemId];
   }
 
   get({ resourceId, queryParams, bodyParams, dispatch } = {}) {
@@ -180,7 +212,7 @@ class Resource {
         this.transport
           .request({ method, endpoint, bodyParams })
           .then(({ json }) => {
-            dispatch(this.actions[`${this.name}_list`].creator(json));
+            dispatch(this.actions.list.creator(json));
             ok(json);
           })
           .catch(error => fail(error));

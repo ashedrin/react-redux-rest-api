@@ -1,5 +1,4 @@
 import React from "react";
-import { combineReducers } from "redux";
 import ResourceTransport from "./ResourceTransport";
 import Resource from "./Resource";
 
@@ -26,12 +25,10 @@ class ResourceManager {
     });
 
     this.resources[config.name] = resource;
-    this.actions = { ...this.actions, ...resource.actions };
   }
 
   makeReducer(actions) {
-    const reducer = (state = {}, action) => {
-
+    const reducer = (state = { items: {}}, action) => {
       if (!actions[action.type]) {
         return state;
       }
@@ -44,16 +41,14 @@ class ResourceManager {
 
   get reducer() {
     const reducers = {};
-    const defaultState = {};
 
     Object.keys(this.resources).forEach(
       key => {
-        reducers[key] = this.makeReducer(this.resources[key].actions);
-        defaultState[key] = { items: {} }
+        reducers['api_' + key] = this.makeReducer(this.resources[key].actions);
       }
     );
 
-    return [ combineReducers(reducers), defaultState ];
+    return reducers;
   }
 
   getResource(resourceName) {
