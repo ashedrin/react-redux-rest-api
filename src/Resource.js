@@ -46,7 +46,7 @@ const defaultActionsConfig = {
       const items = { ...state.items };
       delete items[item.id];
 
-      return { ...state, items }
+      return { ...state, items, count: state.count - 1 }
     }
   },
   list: {
