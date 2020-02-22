@@ -194,7 +194,7 @@ class Resource {
           .request({ method, endpoint, bodyParams })
           .then(
             (data) => {
-              dispatch(this.actions[`${this.name}_remove`].creator(data.json));
+              dispatch(this.actions.remove.creator(data.json));
               ok(data);
             }
           )
