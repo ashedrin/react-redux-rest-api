@@ -42,7 +42,8 @@ const defaultActionsConfig = {
   },
   remove: {
     actionType: 'remove',
-    requestHandler: (state, { payload: { item }}) => {
+    requestHandler: (request) => ({ item: { id: request.id } }),
+    handler: (state, { payload: { item }}) => {
       const items = { ...state.items };
       delete items[item.id];
 
@@ -51,9 +52,8 @@ const defaultActionsConfig = {
   },
   list: {
     actionType: 'list',
-    requestHandler: (state, { payload: { items } }) => ({
-      ...state,
-      items: items.reduce((reducer, item) => ({ ...reducer, [item.id]: item }), {})
+    requestHandler: (request) => ({
+      items: request.items.reduce((reducer, item) => ({ ...reducer, [item.id]: item }), {})
     }),
     handler: (state, { payload }) => {
       return {
